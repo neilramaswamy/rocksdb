@@ -104,14 +104,13 @@ LoggerJniCallback::LoggerJniCallback(JNIEnv* env, jobject jlogger)
   if (!logging_thread.joinable()) {
     logging_thread =
         port::Thread([this] { LoggerJniCallback::log_thread_loop(); });
-    logging_thread.detach();
   }
 }
 
 // [NEIL] Logging thread stuff
 port::Mutex LoggerJniCallback::logging_thread_mtx;
 port::Thread LoggerJniCallback::logging_thread;
-bool LoggerJniCallback::is_logging_thread_active = true;
+volatile bool LoggerJniCallback::is_messaging_active = true;
 
 port::Mutex LoggerJniCallback::message_mtx;
 port::CondVar LoggerJniCallback::message_cond(&LoggerJniCallback::message_mtx);
@@ -129,16 +128,21 @@ void LoggerJniCallback::log_thread_loop() {
   MutexLock lk(&message_mtx);
   std::cout << "log_thread_loop is running\n";
 
-  while (is_logging_thread_active) {
+  while (is_messaging_active) {
     std::cout << "log_thread_loop top of loop\n";
 
-    // Wait until there is a message to log (or we become deactivated)
-    while (message == nullptr && is_logging_thread_active) {
+    // Wait until there is a message to log and we're active.
+    //
+    // If we become inactive due to logger destruction, the cond var gets
+    // signalled.
+    while (message == nullptr && is_messaging_active) {
       message_cond.Wait();
+      std::cout << "Woken up, is_messaging_active is " << is_messaging_active
+                << "\n";
     }
     std::cout << "Finishing waiting\n";
 
-    if (!is_logging_thread_active) {
+    if (!is_messaging_active) {
       std::cout << "Exiting logging thread loop\n";
       break;
     }
@@ -288,14 +292,15 @@ LoggerJniCallback::~LoggerJniCallback() {
     env->DeleteGlobalRef(m_jheader_level);
   }
 
-  std::cout << "destructor is running\n";
+  std::cout << "[NEIL] destructor is running\n";
 
   releaseJniEnv(attached_thread);
 
-  MutexLock lk(&logging_thread_mtx);
-  is_logging_thread_active = false;
+  MutexLock lk(&message_mtx);
+  is_messaging_active = false;
+  message_cond.SignalAll();
 
-  std::cout << "Set logging thread active false. Joining...\n";
+  std::cout << "[NEIL] Set logging thread active false. Signaling wakeup...\n";
 }
 
 }  // namespace ROCKSDB_NAMESPACE
