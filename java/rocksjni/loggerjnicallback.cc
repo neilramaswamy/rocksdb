@@ -118,6 +118,9 @@ std::unique_ptr<char[]> LoggerJniCallback::message;
 
 void LoggerJniCallback::log_thread_loop() {
   // Attach to the JVM.
+  jboolean attached_thread = JNI_FALSE;
+  JNIEnv* env = getJniEnv(&attached_thread);
+  assert(env != nullptr);
 
   // In this function, the only point at which this mutex becomes unlocked
   // is when the condition variable releases it. But within the code of
@@ -126,10 +129,6 @@ void LoggerJniCallback::log_thread_loop() {
   // std::cout << "log_thread_loop is running\n";
 
   while (is_messaging_active) {
-    jboolean attached_thread = JNI_FALSE;
-    JNIEnv* env = getJniEnv(&attached_thread);
-    assert(env != nullptr);
-
     std::cout << "log_thread_loop top of loop\n";
 
     // Wait until there is a message to log and we're active.
@@ -151,6 +150,8 @@ void LoggerJniCallback::log_thread_loop() {
 
     // There needs to be a message at this point
     assert(message);
+    assert(env != nullptr);
+    std::cout << "message is " << message.get() << "\n";
     jstring jmsg = env->NewStringUTF(message.get());
 
     if (jmsg == nullptr) {
@@ -187,9 +188,9 @@ void LoggerJniCallback::log_thread_loop() {
     // Reset static state
     message = nullptr;
     message_cond.SignalAll();
-
-    releaseJniEnv(attached_thread);
   }
+
+  releaseJniEnv(attached_thread);
 
   std::cout << "log_thread_loop about to detach from JVM\n";
 }
