@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * {@link AbstractNativeReference} which have an immutable reference to the
  * underlying native C++ object
  */
-//@ThreadSafe
+// @ThreadSafe
 public abstract class AbstractImmutableNativeReference
     extends AbstractNativeReference {
 
@@ -32,7 +32,7 @@ public abstract class AbstractImmutableNativeReference
   }
 
   /**
-   * Releases this {@code AbstractNativeReference} from  the responsibility of
+   * Releases this {@code AbstractNativeReference} from the responsibility of
    * freeing the underlying native C++ object
    * <p>
    * This will prevent the object from attempting to delete the underlying
@@ -52,6 +52,7 @@ public abstract class AbstractImmutableNativeReference
   @Override
   public void close() {
     if (owningHandle_.compareAndSet(true, false)) {
+      System.out.println("[ROCKS] Owned handle, so going to dispose internal");
       disposeInternal();
     }
   }

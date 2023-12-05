@@ -126,10 +126,10 @@ void LoggerJniCallback::log_thread_loop() {
   // is when the condition variable releases it. But within the code of
   // this function, it's always locked.
   MutexLock lk(&message_mtx);
-  std::cout << "log_thread_loop is running\n";
+  // std::cout << "log_thread_loop is running\n";
 
   while (is_messaging_active) {
-    std::cout << "log_thread_loop top of loop\n";
+    // std::cout << "log_thread_loop top of loop\n";
 
     // Wait until there is a message to log and we're active.
     //
@@ -137,13 +137,13 @@ void LoggerJniCallback::log_thread_loop() {
     // signalled.
     while (message == nullptr && is_messaging_active) {
       message_cond.Wait();
-      std::cout << "Woken up, is_messaging_active is " << is_messaging_active
-                << "\n";
+      // std::cout << "Woken up, is_messaging_active is " << is_messaging_active
+      // << "\n";
     }
-    std::cout << "Finishing waiting\n";
+    // std::cout << "Finishing waiting\n";
 
     if (!is_messaging_active) {
-      std::cout << "Exiting logging thread loop\n";
+      // std::cout << "Exiting logging thread loop\n";
       break;
     }
 
@@ -187,7 +187,7 @@ void LoggerJniCallback::log_thread_loop() {
     message_cond.SignalAll();
   }
 
-  std::cout << "log_thread_loop about to detach from JVM\n";
+  // std::cout << "log_thread_loop about to detach from JVM\n";
 
   releaseJniEnv(attached_thread);
 }
@@ -226,21 +226,24 @@ void LoggerJniCallback::Logv(const InfoLogLevel log_level, const char* format,
     //     break;
     // }
 
-    // Create the formatted string before creating lock contention
-    assert(format != nullptr);
-    std::unique_ptr<char[]> msg = format_str(format, ap);
+    // Log 20 times
+    for (int i = 0; i < 20; i++) {
+      // Create the formatted string before creating lock contention
+      assert(format != nullptr);
+      std::unique_ptr<char[]> msg = format_str(format, ap);
 
-    MutexLock lk(&message_mtx);
+      MutexLock lk(&message_mtx);
 
-    // Loop until the predicate is satisifed, i.e. nothing is
-    // currently being logged
-    while (message != nullptr) {
-      message_cond.Wait();
+      // Loop until the predicate is satisifed, i.e. nothing is
+      // currently being logged
+      while (message != nullptr) {
+        message_cond.Wait();
+      }
+
+      assert(message == nullptr);
+      message = std::move(msg);
+      message_cond.SignalAll();
     }
-
-    assert(message == nullptr);
-    message = std::move(msg);
-    message_cond.SignalAll();
   }
 }
 
@@ -262,7 +265,7 @@ std::unique_ptr<char[]> LoggerJniCallback::format_str(const char* format,
   return buf;
 }
 LoggerJniCallback::~LoggerJniCallback() {
-  std::cout << "[NEIL] logger callback exiting\n";
+  // std::cout << "[NEIL] destructor being called\n";
 
   jboolean attached_thread = JNI_FALSE;
   JNIEnv* env = getJniEnv(&attached_thread);
@@ -292,7 +295,7 @@ LoggerJniCallback::~LoggerJniCallback() {
     env->DeleteGlobalRef(m_jheader_level);
   }
 
-  std::cout << "[NEIL] destructor is running\n";
+  // std::cout << "[NEIL] destructor is running\n";
 
   releaseJniEnv(attached_thread);
 
@@ -300,7 +303,8 @@ LoggerJniCallback::~LoggerJniCallback() {
   is_messaging_active = false;
   message_cond.SignalAll();
 
-  std::cout << "[NEIL] Set logging thread active false. Signaling wakeup...\n";
+  // std::cout << "[NEIL] Set logging thread active false. Signaling
+  // wakeup...\n";
 }
 
 }  // namespace ROCKSDB_NAMESPACE
@@ -375,8 +379,11 @@ jbyte Java_org_rocksdb_Logger_infoLogLevel(JNIEnv* /*env*/, jobject /*jobj*/,
  */
 void Java_org_rocksdb_Logger_disposeInternal(JNIEnv* /*env*/, jobject /*jobj*/,
                                              jlong jhandle) {
+  // std::cout << "[ROCKS] about to delete handle via disposeInternal\n";
   auto* handle =
       reinterpret_cast<std::shared_ptr<ROCKSDB_NAMESPACE::LoggerJniCallback>*>(
           jhandle);
+  // std::cout << "[ROCKS] shared handle has " << handle->use_count()
+  // << " references\n";
   delete handle;  // delete std::shared_ptr
 }
