@@ -52,7 +52,6 @@ public abstract class AbstractImmutableNativeReference
   @Override
   public void close() {
     if (owningHandle_.compareAndSet(true, false)) {
-      System.out.println("[ROCKS] Owned handle, so going to dispose internal");
       disposeInternal();
     }
   }

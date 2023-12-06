@@ -130,13 +130,11 @@ public abstract class Logger extends RocksCallbackObject {
    */
   @Override
   protected void disposeInternal() {
-    System.out.println("[ROCKS] calling dispose internal on logger");
     disposeInternal(nativeHandle_);
   }
 
   @Override
   public void close() {
-    System.out.println("[ROCKS] closing java logger via super close");
     super.close();
   }
 

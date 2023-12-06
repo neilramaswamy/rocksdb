@@ -129,7 +129,7 @@ void LoggerJniCallback::log_thread_loop() {
   // std::cout << "log_thread_loop is running\n";
 
   while (is_messaging_active) {
-    std::cout << "log_thread_loop top of loop\n";
+    // std::cout << "log_thread_loop top of loop\n";
 
     // Wait until there is a message to log and we're active.
     //
@@ -137,13 +137,13 @@ void LoggerJniCallback::log_thread_loop() {
     // signalled.
     while (message == nullptr && is_messaging_active) {
       message_cond.Wait();
-      std::cout << "Woken up, is_messaging_active is " << is_messaging_active
-                << "\n";
+      // std::cout << "Woken up, is_messaging_active is " << is_messaging_active
+      // << "\n";
     }
-    std::cout << "Finishing waiting\n";
+    // std::cout << "Finishing waiting\n";
 
     if (!is_messaging_active) {
-      std::cout << "Exiting logging thread loop\n";
+      // std::cout << "Exiting logging thread loop\n";
       releaseJniEnv(attached_thread);
       break;
     }
@@ -151,7 +151,7 @@ void LoggerJniCallback::log_thread_loop() {
     // There needs to be a message at this point
     assert(message);
     assert(env != nullptr);
-    std::cout << "message is " << message.get() << "\n";
+    // std::cout << "message is " << message.get() << "\n";
     jstring jmsg = env->NewStringUTF(message.get());
 
     if (jmsg == nullptr) {
@@ -192,7 +192,7 @@ void LoggerJniCallback::log_thread_loop() {
 
   releaseJniEnv(attached_thread);
 
-  std::cout << "log_thread_loop about to detach from JVM\n";
+  // std::cout << "log_thread_loop about to detach from JVM\n";
 }
 
 void LoggerJniCallback::Logv(const char* /*format*/, va_list /*ap*/) {
@@ -268,7 +268,7 @@ std::unique_ptr<char[]> LoggerJniCallback::format_str(const char* format,
   return buf;
 }
 LoggerJniCallback::~LoggerJniCallback() {
-  std::cout << "[NEIL] destructor being called\n";
+  // std::cout << "[NEIL] destructor being called\n";
 
   jboolean attached_thread = JNI_FALSE;
   JNIEnv* env = getJniEnv(&attached_thread);
@@ -300,7 +300,7 @@ LoggerJniCallback::~LoggerJniCallback() {
 
   releaseJniEnv(attached_thread);
 
-  std::cout << "[NEIL] destructor is running\n";
+  // std::cout << "[NEIL] destructor is running\n";
 
   {
     MutexLock lk(&message_mtx);
@@ -308,12 +308,12 @@ LoggerJniCallback::~LoggerJniCallback() {
     message_cond.SignalAll();
   }
 
-  std::cout << "[ROCKS] about to join\n";
-  std::cout << "[ROCKS] logging thread is joinable "
-            << logging_thread.joinable() << "\n";
+  // std::cout << "[ROCKS] about to join\n";
+  // std::cout << "[ROCKS] logging thread is joinable "
+  // << logging_thread.joinable() << "\n";
   logging_thread.join();
-  std::cout << "[ROCKS] finished joining\n";
-  // std::cout << "[NEIL] Set logging thread active false. Signaling
+  // // std::cout << "[ROCKS] finished joining\n";
+  // // std::cout << "[NEIL] Set logging thread active false. Signaling
   // wakeup...\n";
 }
 
@@ -389,11 +389,11 @@ jbyte Java_org_rocksdb_Logger_infoLogLevel(JNIEnv* /*env*/, jobject /*jobj*/,
  */
 void Java_org_rocksdb_Logger_disposeInternal(JNIEnv* /*env*/, jobject /*jobj*/,
                                              jlong jhandle) {
-  // std::cout << "[ROCKS] about to delete handle via disposeInternal\n";
+  // // std::cout << "[ROCKS] about to delete handle via disposeInternal\n";
   auto* handle =
       reinterpret_cast<std::shared_ptr<ROCKSDB_NAMESPACE::LoggerJniCallback>*>(
           jhandle);
-  std::cout << "[ROCKS] shared handle has " << handle->use_count()
-            << " references\n";
+  // std::cout << "[ROCKS] shared handle has " << handle->use_count()
+  // << " references\n";
   delete handle;  // delete std::shared_ptr
 }
