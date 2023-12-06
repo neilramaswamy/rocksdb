@@ -135,12 +135,12 @@ void LoggerJniCallback::log_thread_loop() {
     //
     // If we become inactive due to logger destruction, the cond var gets
     // signalled.
+
     while (message == nullptr && is_messaging_active) {
       message_cond.Wait();
       // std::cout << "Woken up, is_messaging_active is " << is_messaging_active
       // << "\n";
     }
-    // std::cout << "Finishing waiting\n";
 
     if (!is_messaging_active) {
       // std::cout << "Exiting logging thread loop\n";
@@ -191,7 +191,6 @@ void LoggerJniCallback::log_thread_loop() {
   }
 
   releaseJniEnv(attached_thread);
-
   // std::cout << "log_thread_loop about to detach from JVM\n";
 }
 
@@ -230,6 +229,7 @@ void LoggerJniCallback::Logv(const InfoLogLevel log_level, const char* format,
     // }
 
     // Log 20 times
+    auto start = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < 20; i++) {
       // Create the formatted string before creating lock contention
       assert(format != nullptr);
@@ -247,6 +247,11 @@ void LoggerJniCallback::Logv(const InfoLogLevel log_level, const char* format,
       message = std::move(msg);
       message_cond.SignalAll();
     }
+    auto end = std::chrono::high_resolution_clock::now();
+    auto diff =
+        std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+
+    std::cout << std::to_string(diff.count()) << "\n";
   }
 }
 
