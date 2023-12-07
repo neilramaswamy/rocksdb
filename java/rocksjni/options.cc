@@ -37,6 +37,7 @@
 #include "rocksjni/portal.h"
 #include "rocksjni/statisticsjni.h"
 #include "rocksjni/table_filter_jnicallback.h"
+#include "util/stderr_logger.h"
 #include "utilities/merge_operators.h"
 
 /*
@@ -1087,10 +1088,20 @@ void Java_org_rocksdb_Options_setSstFileManager(
  */
 void Java_org_rocksdb_Options_setLogger(JNIEnv*, jobject, jlong jhandle,
                                         jlong jlogger_handle) {
-  std::shared_ptr<ROCKSDB_NAMESPACE::LoggerJniCallback>* pLogger =
-      reinterpret_cast<std::shared_ptr<ROCKSDB_NAMESPACE::LoggerJniCallback>*>(
-          jlogger_handle);
-  reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)->info_log = *pLogger;
+  // std::shared_ptr<ROCKSDB_NAMESPACE::LoggerJniCallback>* pLogger =
+  //     reinterpret_cast<std::shared_ptr<ROCKSDB_NAMESPACE::LoggerJniCallback>*>(
+  //         jlogger_handle);
+  // (void)jlogger_handle;
+  // reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)->info_log =
+  // errLogger;
+  (void)jhandle;
+  (void)jlogger_handle;
+
+  std::shared_ptr<ROCKSDB_NAMESPACE::StderrLogger>* errLogger =
+      reinterpret_cast<std::shared_ptr<ROCKSDB_NAMESPACE::StderrLogger>*>(
+          ROCKSDB_NAMESPACE::DEBUG_LEVEL);
+
+  reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)->info_log = *errLogger;
 }
 
 /*
