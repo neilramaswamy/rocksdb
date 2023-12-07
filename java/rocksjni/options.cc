@@ -1088,18 +1088,10 @@ void Java_org_rocksdb_Options_setSstFileManager(
  */
 void Java_org_rocksdb_Options_setLogger(JNIEnv*, jobject, jlong jhandle,
                                         jlong jlogger_handle) {
-  // std::shared_ptr<ROCKSDB_NAMESPACE::LoggerJniCallback>* pLogger =
-  //     reinterpret_cast<std::shared_ptr<ROCKSDB_NAMESPACE::LoggerJniCallback>*>(
-  //         jlogger_handle);
-  // (void)jlogger_handle;
-  // reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)->info_log =
-  // errLogger;
-  (void)jhandle;
-  (void)jlogger_handle;
-
-  // For now, we just hijack this to be the StderrLogger
-  reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)->info_log =
-      std::make_shared<ROCKSDB_NAMESPACE::StderrLogger>();
+  std::shared_ptr<ROCKSDB_NAMESPACE::LoggerJniCallback>* pLogger =
+      reinterpret_cast<std::shared_ptr<ROCKSDB_NAMESPACE::LoggerJniCallback>*>(
+          jlogger_handle);
+  reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)->info_log = *pLogger;
 }
 
 /*
