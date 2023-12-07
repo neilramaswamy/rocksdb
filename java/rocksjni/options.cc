@@ -1097,11 +1097,19 @@ void Java_org_rocksdb_Options_setLogger(JNIEnv*, jobject, jlong jhandle,
   (void)jhandle;
   (void)jlogger_handle;
 
-  std::shared_ptr<ROCKSDB_NAMESPACE::StderrLogger>* errLogger =
-      reinterpret_cast<std::shared_ptr<ROCKSDB_NAMESPACE::StderrLogger>*>(
-          ROCKSDB_NAMESPACE::DEBUG_LEVEL);
+  // For now, we just hijack this to be the StderrLogger
+  reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)->info_log =
+      std::make_shared<ROCKSDB_NAMESPACE::StderrLogger>();
+}
 
-  reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)->info_log = *errLogger;
+/*
+ * Class:     org_rocksdb_Options
+ * Method:    setStderrLogger
+ * Signature: (JJ)V
+ */
+void Java_org_rocksdb_Options_setStderrLogger(JNIEnv*, jobject, jlong jhandle) {
+  reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)->info_log =
+      std::make_shared<ROCKSDB_NAMESPACE::StderrLogger>();
 }
 
 /*

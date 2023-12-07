@@ -191,6 +191,15 @@ public interface DBOptionsInterface<T extends DBOptionsInterface<T>> {
   T setLogger(Logger logger);
 
   /**
+   * <p>Sets the logger to be the native RocksDB logger that
+   * logs to stderr.</p>
+   * 
+   * @return the instance of the current object.
+   */
+  T setStderrLogger();
+
+
+  /**
    * <p>Sets the RocksDB log level. Default level is INFO</p>
    *
    * @param infoLogLevel log level to set.
