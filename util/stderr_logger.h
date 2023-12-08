@@ -16,6 +16,7 @@ namespace ROCKSDB_NAMESPACE {
 // Prints logs to stderr for faster debugging
 class StderrLogger : public Logger {
  public:
+  explicit StderrLogger(const InfoLogLevel log_level) : Logger(log_level) {}
   explicit StderrLogger(const InfoLogLevel log_level,
                         std::unique_ptr<char[]>& log_prefix);
   ~StderrLogger() override;
