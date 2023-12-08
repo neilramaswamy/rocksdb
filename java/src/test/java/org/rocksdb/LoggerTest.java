@@ -235,6 +235,12 @@ public class LoggerTest {
     }
   }
 
+  // Please note -- this will write logs to stderr, i.e. your console.
+  // It also doesn't actually make any assertions. Why?
+  // 
+  // It's just a POC to show that it works. In the future, to test this
+  // sort of behavior, we'll likely need to dup stderr to a file, close
+  // stderr, and restore it later (as to not clutter the console).
   @Test
   public void setStderrLogger() throws RocksDBException {
     String logPrefix = "foo-prefix";
