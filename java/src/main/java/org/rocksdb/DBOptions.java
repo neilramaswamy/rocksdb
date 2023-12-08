@@ -220,9 +220,9 @@ public class DBOptions extends RocksObject
   }
 
   @Override
-  public DBOptions setStderrLogger() {
+  public DBOptions setStderrLogger(final String log_prefix) {
     assert(isOwningHandle());
-    setStderrLogger(nativeHandle_);
+    setStderrLogger(nativeHandle_, log_prefix);
     return this;
   }
 
@@ -1284,7 +1284,7 @@ public class DBOptions extends RocksObject
       final long sstFileManagerHandle);
   private native void setLogger(long handle,
       long loggerHandle);
-  private native void setStderrLogger(long handle);
+  private native void setStderrLogger(long handle, String log_prefix);
   private native void setInfoLogLevel(long handle, byte logLevel);
   private native byte infoLogLevel(long handle);
   private native void setMaxOpenFiles(long handle, int maxOpenFiles);

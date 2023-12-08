@@ -1099,10 +1099,23 @@ void Java_org_rocksdb_Options_setLogger(JNIEnv*, jobject, jlong jhandle,
  * Method:    setStderrLogger
  * Signature: (JJ)V
  */
-void Java_org_rocksdb_Options_setStderrLogger(JNIEnv*, jobject, jlong jhandle) {
+void Java_org_rocksdb_Options_setStderrLogger(JNIEnv* env, jobject,
+                                              jlong jhandle,
+                                              jstring jlog_prefix) {
+  // Use the log-level from the options
+  auto log_level =
+      reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)->info_log_level;
+
+  // Copy the user-supplied prefix to a native char buffer
+  jboolean has_exception = JNI_FALSE;
+  auto log_prefix = ROCKSDB_NAMESPACE::JniUtil::copyString(
+      env, jlog_prefix, &has_exception);  // also releases jlog_prefix
+  if (has_exception == JNI_TRUE) {
+    return;
+  }
+
   reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)->info_log =
-      std::make_shared<ROCKSDB_NAMESPACE::StderrLogger>(
-          ROCKSDB_NAMESPACE::InfoLogLevel::DEBUG_LEVEL);
+      std::make_shared<ROCKSDB_NAMESPACE::StderrLogger>(log_level, log_prefix);
 }
 
 /*

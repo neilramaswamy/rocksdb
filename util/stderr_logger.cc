@@ -9,6 +9,11 @@
 #include "port/sys_time.h"
 
 namespace ROCKSDB_NAMESPACE {
+StderrLogger::StderrLogger(const InfoLogLevel log_level,
+                           std::unique_ptr<char[]>& log_prefix)
+    : Logger(log_level) {
+  prefix = std::move(log_prefix);
+}
 StderrLogger::~StderrLogger() {}
 
 void StderrLogger::Logv(const char* format, va_list ap) {
@@ -23,6 +28,10 @@ void StderrLogger::Logv(const char* format, va_list ap) {
           t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec,
           static_cast<int>(now_tv.tv_usec),
           static_cast<long long unsigned int>(thread_id));
+
+  if (prefix != nullptr) {
+    fprintf(stderr, "%s ", prefix.get());
+  }
 
   vfprintf(stderr, format, ap);
   fprintf(stderr, "\n");
