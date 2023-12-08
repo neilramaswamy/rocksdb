@@ -175,7 +175,7 @@ void LoggerJniCallback::Logv(const InfoLogLevel log_level, const char* format,
     auto diff =
         std::chrono::duration_cast<std::chrono::microseconds>(end - start);
 
-    std::cout << std::to_string(diff.count()) << "\n";
+    std::cout << (std::to_string(diff.count()) + "\n");
   }
 }
 
