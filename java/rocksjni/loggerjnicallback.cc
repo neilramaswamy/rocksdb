@@ -135,6 +135,8 @@ void LoggerJniCallback::Logv(const InfoLogLevel log_level, const char* format,
     assert(format != nullptr);
     const std::unique_ptr<char[]> msg = format_str(format, ap);
 
+    auto start = std::chrono::steady_clock::now();
+
     // pass msg to java callback handler
     jboolean attached_thread = JNI_FALSE;
     JNIEnv* env = getJniEnv(&attached_thread);
@@ -168,6 +170,12 @@ void LoggerJniCallback::Logv(const InfoLogLevel log_level, const char* format,
 
     env->DeleteLocalRef(jmsg);
     releaseJniEnv(attached_thread);
+
+    auto end = std::chrono::steady_clock::now();
+    auto diff =
+        std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+
+    std::cout << std::to_string(diff.count()) << "\n";
   }
 }
 
