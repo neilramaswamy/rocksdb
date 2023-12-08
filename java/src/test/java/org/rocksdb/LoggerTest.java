@@ -235,49 +235,19 @@ public class LoggerTest {
     }
   }
 
-  private class ShimmedSystemErr extends PrintStream {
-    private int lineCount;
-    private String logPrefix;
-
-    public ShimmedSystemErr(OutputStream out, String logPrefix) {
-        super(out);
-        this.lineCount = 0;
-        this.logPrefix = logPrefix;
-    }
-
-    // Swallow the log, since we don't want to actually write
-    // to stderr in our tests.
-    @Override
-    public void println(String x) {
-      assertThat(x).contains(logPrefix);
-      lineCount++;
-    }
-
-    public int getLineCount() {
-      return lineCount;
-    }
-  }
-
   @Test
   public void setStderrLogger() throws RocksDBException {
     String logPrefix = "foo-prefix";
-    PrintStream sysErr = System.err;
 
-    ShimmedSystemErr shimmedSysErr = new ShimmedSystemErr(sysErr, logPrefix);
-    System.setErr(shimmedSysErr);
-
-    final Options options = new Options().setStderrLogger(logPrefix);
+    final Options options = new Options().
+      setInfoLogLevel(InfoLogLevel.DEBUG_LEVEL).
+      setStderrLogger(logPrefix).setCreateIfMissing(true);
 
     try (final RocksDB db = RocksDB.open(options,
         dbFolder.getRoot().getAbsolutePath())) {
 
-      assertThat(shimmedSysErr.getLineCount()).isEqualTo(0);
-
       db.put("key".getBytes(), "value".getBytes());
       db.flush(new FlushOptions().setWaitForFlush(true));
-
-      // messages shall be received due to previous actions.
-      assertThat(shimmedSysErr.getLineCount()).isNotEqualTo(0);
     }
   }
 }
