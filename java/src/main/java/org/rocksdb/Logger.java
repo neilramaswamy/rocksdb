@@ -6,16 +6,20 @@
 package org.rocksdb;
 
 /**
- * <p>This class provides a custom logger functionality
+ * <p>
+ * This class provides a custom logger functionality
  * in Java which wraps {@code RocksDB} logging facilities.
  * </p>
  *
- * <p>Using this class RocksDB can log with common
+ * <p>
+ * Using this class RocksDB can log with common
  * Java logging APIs like Log4j or Slf4j without keeping
- * database logs in the filesystem.</p>
+ * database logs in the filesystem.
+ * </p>
  *
  * <strong>Performance</strong>
- * <p>There are certain performance penalties using a Java
+ * <p>
+ * There are certain performance penalties using a Java
  * {@code Logger} implementation within production code.
  * </p>
  *
@@ -28,7 +32,8 @@ package org.rocksdb;
  * and data structures are allocated.
  * </p>
  *
- * <p>Every log message which will be emitted by native code will
+ * <p>
+ * Every log message which will be emitted by native code will
  * trigger expensive native to Java transitions. So the preferred
  * setting for production use is either
  * {@link org.rocksdb.InfoLogLevel#ERROR_LEVEL} or
@@ -40,11 +45,15 @@ public abstract class Logger extends RocksCallbackObject {
   private static final long WITH_DBOPTIONS = 1;
 
   /**
-   * <p>AbstractLogger constructor.</p>
+   * <p>
+   * AbstractLogger constructor.
+   * </p>
    *
-   * <p><strong>Important:</strong> the log level set within
+   * <p>
+   * <strong>Important:</strong> the log level set within
    * the {@link org.rocksdb.Options} instance will be used as
-   * maximum log level of RocksDB.</p>
+   * maximum log level of RocksDB.
+   * </p>
    *
    * @param options {@link org.rocksdb.Options} instance.
    */
@@ -54,11 +63,15 @@ public abstract class Logger extends RocksCallbackObject {
   }
 
   /**
-   * <p>AbstractLogger constructor.</p>
+   * <p>
+   * AbstractLogger constructor.
+   * </p>
    *
-   * <p><strong>Important:</strong> the log level set within
+   * <p>
+   * <strong>Important:</strong> the log level set within
    * the {@link org.rocksdb.DBOptions} instance will be used
-   * as maximum log level of RocksDB.</p>
+   * as maximum log level of RocksDB.
+   * </p>
    *
    * @param dboptions {@link org.rocksdb.DBOptions} instance.
    */
@@ -68,9 +81,9 @@ public abstract class Logger extends RocksCallbackObject {
 
   @Override
   protected long initializeNative(final long... nativeParameterHandles) {
-    if(nativeParameterHandles[1] == WITH_OPTIONS) {
+    if (nativeParameterHandles[1] == WITH_OPTIONS) {
       return createNewLoggerOptions(nativeParameterHandles[0]);
-    } else if(nativeParameterHandles[1] == WITH_DBOPTIONS) {
+    } else if (nativeParameterHandles[1] == WITH_DBOPTIONS) {
       return createNewLoggerDbOptions(nativeParameterHandles[0]);
     } else {
       throw new IllegalArgumentException();
@@ -83,7 +96,7 @@ public abstract class Logger extends RocksCallbackObject {
    * @param infoLogLevel {@link org.rocksdb.InfoLogLevel} instance.
    */
   public void setInfoLogLevel(final InfoLogLevel infoLogLevel) {
-      setInfoLogLevel(nativeHandle_, infoLogLevel.getValue());
+    setInfoLogLevel(nativeHandle_, infoLogLevel.getValue());
   }
 
   /**
@@ -101,10 +114,13 @@ public abstract class Logger extends RocksCallbackObject {
 
   protected native long createNewLoggerOptions(
       long options);
+
   protected native long createNewLoggerDbOptions(
       long dbOptions);
+
   protected native void setInfoLogLevel(long handle,
       byte infoLogLevel);
+
   protected native byte infoLogLevel(long handle);
 
   /**
@@ -115,6 +131,11 @@ public abstract class Logger extends RocksCallbackObject {
   @Override
   protected void disposeInternal() {
     disposeInternal(nativeHandle_);
+  }
+
+  @Override
+  public void close() {
+    super.close();
   }
 
   private native void disposeInternal(final long handle);

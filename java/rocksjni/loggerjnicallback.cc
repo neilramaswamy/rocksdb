@@ -14,6 +14,7 @@
 #include "include/org_rocksdb_Logger.h"
 #include "rocksjni/cplusplus_to_java_convert.h"
 #include "rocksjni/portal.h"
+#include "util/mutexlock.h"
 
 namespace ROCKSDB_NAMESPACE {
 
@@ -96,51 +97,63 @@ LoggerJniCallback::LoggerJniCallback(JNIEnv* env, jobject jlogger)
     // exception thrown: OutOfMemoryError
     return;
   }
+
+  MutexLock lk(&logging_thread_mtx);
+  // This checks whether the thread has been initialized. We don't want to do so
+  // twice. So, if it is is joinable, it hasn't been initialized.
+  if (!logging_thread.joinable()) {
+    logging_thread =
+        port::Thread([this] { LoggerJniCallback::log_thread_loop(); });
+  }
 }
 
-void LoggerJniCallback::Logv(const char* /*format*/, va_list /*ap*/) {
-  // We implement this method because it is virtual but we don't
-  // use it because we need to know about the log level.
-}
+// [NEIL] Logging thread stuff
+port::Mutex LoggerJniCallback::logging_thread_mtx;
+port::Thread LoggerJniCallback::logging_thread;
+volatile bool LoggerJniCallback::is_messaging_active = true;
 
-void LoggerJniCallback::Logv(const InfoLogLevel log_level, const char* format,
-                             va_list ap) {
-  if (GetInfoLogLevel() <= log_level) {
-    // determine InfoLogLevel java enum instance
-    jobject jlog_level;
-    switch (log_level) {
-      case ROCKSDB_NAMESPACE::InfoLogLevel::DEBUG_LEVEL:
-        jlog_level = m_jdebug_level;
-        break;
-      case ROCKSDB_NAMESPACE::InfoLogLevel::INFO_LEVEL:
-        jlog_level = m_jinfo_level;
-        break;
-      case ROCKSDB_NAMESPACE::InfoLogLevel::WARN_LEVEL:
-        jlog_level = m_jwarn_level;
-        break;
-      case ROCKSDB_NAMESPACE::InfoLogLevel::ERROR_LEVEL:
-        jlog_level = m_jerror_level;
-        break;
-      case ROCKSDB_NAMESPACE::InfoLogLevel::FATAL_LEVEL:
-        jlog_level = m_jfatal_level;
-        break;
-      case ROCKSDB_NAMESPACE::InfoLogLevel::HEADER_LEVEL:
-        jlog_level = m_jheader_level;
-        break;
-      default:
-        jlog_level = m_jfatal_level;
-        break;
+port::Mutex LoggerJniCallback::message_mtx;
+port::CondVar LoggerJniCallback::message_cond(&LoggerJniCallback::message_mtx);
+std::unique_ptr<char[]> LoggerJniCallback::message;
+
+void LoggerJniCallback::log_thread_loop() {
+  // Attach to the JVM.
+  jboolean attached_thread = JNI_FALSE;
+  JNIEnv* env = getJniEnv(&attached_thread);
+  assert(env != nullptr);
+
+  // In this function, the only point at which this mutex becomes unlocked
+  // is when the condition variable releases it. But within the code of
+  // this function, it's always locked.
+  MutexLock lk(&message_mtx);
+  // std::cout << "log_thread_loop is running\n";
+
+  while (is_messaging_active) {
+    // std::cout << "log_thread_loop top of loop\n";
+
+    // Wait until there is a message to log and we're active.
+    //
+    // If we become inactive due to logger destruction, the cond var gets
+    // signalled.
+
+    while (message == nullptr && is_messaging_active) {
+      message_cond.Wait();
+      // std::cout << "Woken up, is_messaging_active is " << is_messaging_active
+      // << "\n";
     }
 
-    assert(format != nullptr);
-    const std::unique_ptr<char[]> msg = format_str(format, ap);
+    if (!is_messaging_active) {
+      // std::cout << "Exiting logging thread loop\n";
+      releaseJniEnv(attached_thread);
+      break;
+    }
 
-    // pass msg to java callback handler
-    jboolean attached_thread = JNI_FALSE;
-    JNIEnv* env = getJniEnv(&attached_thread);
+    // There needs to be a message at this point
+    assert(message);
     assert(env != nullptr);
+    // std::cout << "message is " << message.get() << "\n";
+    jstring jmsg = env->NewStringUTF(message.get());
 
-    jstring jmsg = env->NewStringUTF(msg.get());
     if (jmsg == nullptr) {
       // unable to construct string
       if (env->ExceptionCheck()) {
@@ -157,7 +170,10 @@ void LoggerJniCallback::Logv(const InfoLogLevel log_level, const char* format,
       return;
     }
 
-    env->CallVoidMethod(m_jcallback_obj, m_jLogMethodId, jlog_level, jmsg);
+    // TODO(neil): This needs to be changed to the original log level, not
+    // always m_jdebug_level.
+    env->CallVoidMethod(m_jcallback_obj, m_jLogMethodId, m_jdebug_level, jmsg);
+
     if (env->ExceptionCheck()) {
       // exception thrown
       env->ExceptionDescribe();  // print out exception to stderr
@@ -166,8 +182,76 @@ void LoggerJniCallback::Logv(const InfoLogLevel log_level, const char* format,
       return;
     }
 
+    // Clean up JVM garbage
     env->DeleteLocalRef(jmsg);
-    releaseJniEnv(attached_thread);
+
+    // Reset static state
+    message = nullptr;
+    message_cond.SignalAll();
+  }
+
+  releaseJniEnv(attached_thread);
+  // std::cout << "log_thread_loop about to detach from JVM\n";
+}
+
+void LoggerJniCallback::Logv(const char* /*format*/, va_list /*ap*/) {
+  // We implement this method because it is virtual but we don't
+  // use it because we need to know about the log level.
+}
+
+void LoggerJniCallback::Logv(const InfoLogLevel log_level, const char* format,
+                             va_list ap) {
+  if (GetInfoLogLevel() <= log_level) {
+    // determine InfoLogLevel java enum instance
+    // jobject jlog_level;
+    // switch (log_level) {
+    //   case ROCKSDB_NAMESPACE::InfoLogLevel::DEBUG_LEVEL:
+    //     jlog_level = m_jdebug_level;
+    //     break;
+    //   case ROCKSDB_NAMESPACE::InfoLogLevel::INFO_LEVEL:
+    //     jlog_level = m_jinfo_level;
+    //     break;
+    //   case ROCKSDB_NAMESPACE::InfoLogLevel::WARN_LEVEL:
+    //     jlog_level = m_jwarn_level;
+    //     break;
+    //   case ROCKSDB_NAMESPACE::InfoLogLevel::ERROR_LEVEL:
+    //     jlog_level = m_jerror_level;
+    //     break;
+    //   case ROCKSDB_NAMESPACE::InfoLogLevel::FATAL_LEVEL:
+    //     jlog_level = m_jfatal_level;
+    //     break;
+    //   case ROCKSDB_NAMESPACE::InfoLogLevel::HEADER_LEVEL:
+    //     jlog_level = m_jheader_level;
+    //     break;
+    //   default:
+    //     jlog_level = m_jfatal_level;
+    //     break;
+    // }
+
+    // Log 20 times
+    auto start = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i < 20; i++) {
+      // Create the formatted string before creating lock contention
+      assert(format != nullptr);
+      std::unique_ptr<char[]> msg = format_str(format, ap);
+
+      MutexLock lk(&message_mtx);
+
+      // Loop until the predicate is satisifed, i.e. nothing is
+      // currently being logged
+      while (message != nullptr) {
+        message_cond.Wait();
+      }
+
+      assert(message == nullptr);
+      message = std::move(msg);
+      message_cond.SignalAll();
+    }
+    auto end = std::chrono::high_resolution_clock::now();
+    auto diff =
+        std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+
+    std::cout << std::to_string(diff.count()) << "\n";
   }
 }
 
@@ -189,6 +273,8 @@ std::unique_ptr<char[]> LoggerJniCallback::format_str(const char* format,
   return buf;
 }
 LoggerJniCallback::~LoggerJniCallback() {
+  // std::cout << "[NEIL] destructor being called\n";
+
   jboolean attached_thread = JNI_FALSE;
   JNIEnv* env = getJniEnv(&attached_thread);
   assert(env != nullptr);
@@ -218,6 +304,22 @@ LoggerJniCallback::~LoggerJniCallback() {
   }
 
   releaseJniEnv(attached_thread);
+
+  // std::cout << "[NEIL] destructor is running\n";
+
+  {
+    MutexLock lk(&message_mtx);
+    is_messaging_active = false;
+    message_cond.SignalAll();
+  }
+
+  // std::cout << "[ROCKS] about to join\n";
+  // std::cout << "[ROCKS] logging thread is joinable "
+  // << logging_thread.joinable() << "\n";
+  logging_thread.join();
+  // // std::cout << "[ROCKS] finished joining\n";
+  // // std::cout << "[NEIL] Set logging thread active false. Signaling
+  // wakeup...\n";
 }
 
 }  // namespace ROCKSDB_NAMESPACE
@@ -292,8 +394,11 @@ jbyte Java_org_rocksdb_Logger_infoLogLevel(JNIEnv* /*env*/, jobject /*jobj*/,
  */
 void Java_org_rocksdb_Logger_disposeInternal(JNIEnv* /*env*/, jobject /*jobj*/,
                                              jlong jhandle) {
+  // // std::cout << "[ROCKS] about to delete handle via disposeInternal\n";
   auto* handle =
       reinterpret_cast<std::shared_ptr<ROCKSDB_NAMESPACE::LoggerJniCallback>*>(
           jhandle);
+  // std::cout << "[ROCKS] shared handle has " << handle->use_count()
+  // << " references\n";
   delete handle;  // delete std::shared_ptr
 }
