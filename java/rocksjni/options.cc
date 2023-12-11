@@ -37,6 +37,8 @@
 #include "rocksjni/portal.h"
 #include "rocksjni/statisticsjni.h"
 #include "rocksjni/table_filter_jnicallback.h"
+#include "test_util/testutil.h"
+#include "util/stderr_logger.h"
 #include "utilities/merge_operators.h"
 
 /*
@@ -1091,6 +1093,39 @@ void Java_org_rocksdb_Options_setLogger(JNIEnv*, jobject, jlong jhandle,
       reinterpret_cast<std::shared_ptr<ROCKSDB_NAMESPACE::LoggerJniCallback>*>(
           jlogger_handle);
   reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)->info_log = *pLogger;
+}
+
+/*
+ * Class:     org_rocksdb_Options
+ * Method:    setNativeLogger
+ * Signature: (JB)V
+ */
+void Java_org_rocksdb_Options_setNativeLogger(JNIEnv* env, jobject,
+                                              jlong jhandle,
+                                              jbyte jnative_logger_type) {
+  auto log_level =
+      reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)->info_log_level;
+
+  switch (jnative_logger_type) {
+    // Null logger (from test_util)
+    case 0x0:
+      reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)->info_log =
+          std::make_shared<ROCKSDB_NAMESPACE::test::NullLogger>();
+      break;
+
+    // Stderr logger
+    case 0x1:
+      reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)->info_log =
+          std::make_shared<ROCKSDB_NAMESPACE::StderrLogger>(log_level);
+      break;
+
+    // Shouldn't happen, since this should only be called from Java using
+    // NativeLoggerType.
+    default:
+      ROCKSDB_NAMESPACE::IllegalArgumentExceptionJni::ThrowNew(
+          env, std::string("Setting native logger is not supported for type ") +
+                   static_cast<char>(jnative_logger_type));
+  }
 }
 
 /*
