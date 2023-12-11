@@ -220,7 +220,7 @@ public class DBOptions extends RocksObject
   }
 
   @Override
-  public Options setNativeLogger(final NativeLoggerType nativeLoggerType) {
+  public DBOptions setNativeLogger(final NativeLoggerType nativeLoggerType) {
     assert(isOwningHandle());
     setNativeLogger(nativeHandle_, nativeLoggerType.getValue());
     return this;
