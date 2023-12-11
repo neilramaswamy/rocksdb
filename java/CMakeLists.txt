@@ -200,6 +200,7 @@ set(JAVA_MAIN_CLASSES
   src/main/java/org/rocksdb/MutableOptionValue.java
   src/main/java/org/rocksdb/NativeComparatorWrapper.java
   src/main/java/org/rocksdb/NativeLibraryLoader.java
+  src/main/java/org/rocksdb/NativeLoggerType.java
   src/main/java/org/rocksdb/OperationStage.java
   src/main/java/org/rocksdb/OperationType.java
   src/main/java/org/rocksdb/OptimisticTransactionDB.java

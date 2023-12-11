@@ -1095,6 +1095,37 @@ void Java_org_rocksdb_Options_setLogger(JNIEnv*, jobject, jlong jhandle,
 
 /*
  * Class:     org_rocksdb_Options
+ * Method:    setNativeLogger
+ * Signature: (JB)V
+ */
+void Java_org_rocksdb_Options_setNativeLogger(JNIEnv*, jobject, jlong jhandle,
+                                              jbyte jnative_logger_type) {
+  auto log_level =
+      reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)->info_log_level;
+
+  switch (jnative_logger_type) {
+    // Null logger
+    case 0x0:
+      reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)->info_log =
+          std::make_shared<ROCKSDB_NAMESPACE::NullLogger>();
+      break;
+
+    // Stderr logger
+    case 0x1:
+      reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)->info_log =
+          std::make_shared<ROCKSDB_NAMESPACE::StderrLogger>(log_level);
+      break;
+
+    default:
+      ROCKSDB_NAMESPACE::IllegalArgumentExceptionJni::ThrowNew(
+          env,
+          std::string("Setting native logger is not supported for " +
+                      "logger type " + static_cast<char>(jnative_logger_type)));
+  }
+}
+
+/*
+ * Class:     org_rocksdb_Options
  * Method:    setInfoLogLevel
  * Signature: (JB)V
  */
