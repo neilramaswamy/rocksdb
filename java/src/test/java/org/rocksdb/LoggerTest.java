@@ -3,6 +3,8 @@ package org.rocksdb;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.OutputStream;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -230,6 +232,28 @@ public class LoggerTest {
         // messages shall be received due to previous actions.
         assertThat(logMessageCounter.get()).isNotEqualTo(0);
       }
+    }
+  }
+
+  // Please note -- this will write logs to stderr, i.e. your console.
+  // It also doesn't actually make any assertions. Why?
+  // 
+  // It's just a POC to show that it works. In the future, to test this
+  // sort of behavior, we'll likely need to dup stderr to a file, close
+  // stderr, and restore it later (as to not clutter the console).
+  @Test
+  public void setStderrLogger() throws RocksDBException {
+    String logPrefix = "foo-prefix";
+
+    final Options options = new Options().
+      setInfoLogLevel(InfoLogLevel.DEBUG_LEVEL).
+      setStderrLogger(logPrefix).setCreateIfMissing(true);
+
+    try (final RocksDB db = RocksDB.open(options,
+        dbFolder.getRoot().getAbsolutePath())) {
+
+      db.put("key".getBytes(), "value".getBytes());
+      db.flush(new FlushOptions().setWaitForFlush(true));
     }
   }
 }

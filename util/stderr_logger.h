@@ -18,7 +18,8 @@ class StderrLogger : public Logger {
  public:
   explicit StderrLogger(const InfoLogLevel log_level = InfoLogLevel::INFO_LEVEL)
       : Logger(log_level) {}
-
+  explicit StderrLogger(const InfoLogLevel log_level,
+                        std::unique_ptr<char[]>& log_prefix);
   ~StderrLogger() override;
 
   // Brings overloaded Logv()s into scope so they're not hidden when we override
@@ -26,6 +27,9 @@ class StderrLogger : public Logger {
   using Logger::Logv;
 
   virtual void Logv(const char* format, va_list ap) override;
+
+ private:
+  std::unique_ptr<const char[]> prefix;
 };
 
 }  // namespace ROCKSDB_NAMESPACE
