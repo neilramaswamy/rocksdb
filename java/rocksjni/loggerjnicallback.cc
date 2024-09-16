@@ -135,39 +135,49 @@ void LoggerJniCallback::Logv(const InfoLogLevel log_level, const char* format,
     assert(format != nullptr);
     const std::unique_ptr<char[]> msg = format_str(format, ap);
 
-    // pass msg to java callback handler
-    jboolean attached_thread = JNI_FALSE;
-    JNIEnv* env = getJniEnv(&attached_thread);
-    assert(env != nullptr);
+    auto start = std::chrono::steady_clock::now();
 
-    jstring jmsg = env->NewStringUTF(msg.get());
-    if (jmsg == nullptr) {
-      // unable to construct string
-      if (env->ExceptionCheck()) {
-        env->ExceptionDescribe();  // print out exception to stderr
+    for (int i = 0; i < 20; i++) {
+      // pass msg to java callback handler
+      jboolean attached_thread = JNI_FALSE;
+      JNIEnv* env = getJniEnv(&attached_thread);
+      assert(env != nullptr);
+
+      jstring jmsg = env->NewStringUTF(msg.get());
+      if (jmsg == nullptr) {
+        // unable to construct string
+        if (env->ExceptionCheck()) {
+          env->ExceptionDescribe();  // print out exception to stderr
+        }
+        releaseJniEnv(attached_thread);
+        return;
       }
-      releaseJniEnv(attached_thread);
-      return;
-    }
-    if (env->ExceptionCheck()) {
-      // exception thrown: OutOfMemoryError
-      env->ExceptionDescribe();  // print out exception to stderr
+      if (env->ExceptionCheck()) {
+        // exception thrown: OutOfMemoryError
+        env->ExceptionDescribe();  // print out exception to stderr
+        env->DeleteLocalRef(jmsg);
+        releaseJniEnv(attached_thread);
+        return;
+      }
+
+      env->CallVoidMethod(m_jcallback_obj, m_jLogMethodId, jlog_level, jmsg);
+      if (env->ExceptionCheck()) {
+        // exception thrown
+        env->ExceptionDescribe();  // print out exception to stderr
+        env->DeleteLocalRef(jmsg);
+        releaseJniEnv(attached_thread);
+        return;
+      }
+
       env->DeleteLocalRef(jmsg);
       releaseJniEnv(attached_thread);
-      return;
     }
 
-    env->CallVoidMethod(m_jcallback_obj, m_jLogMethodId, jlog_level, jmsg);
-    if (env->ExceptionCheck()) {
-      // exception thrown
-      env->ExceptionDescribe();  // print out exception to stderr
-      env->DeleteLocalRef(jmsg);
-      releaseJniEnv(attached_thread);
-      return;
-    }
+    auto end = std::chrono::steady_clock::now();
+    auto diff =
+        std::chrono::duration_cast<std::chrono::microseconds>(end - start);
 
-    env->DeleteLocalRef(jmsg);
-    releaseJniEnv(attached_thread);
+    std::cout << (std::to_string(diff.count()) + "\n");
   }
 }
 
